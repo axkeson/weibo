@@ -41,7 +41,7 @@ class User extends Authenticatable
     public static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($user) {
             $user->activation_token = Str::random(10);
         });
@@ -59,13 +59,67 @@ class User extends Authenticatable
         return "http://www.gravatar.com/avatar/$hash?s=$size";
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function statuses()
     {
         return $this->hasMany(Status::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function feed()
     {
         return $this->statuses()->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function followers()
+    {
+        return $this->belongsToMany(User::Class, 'followers', 'user_id', 'follower_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function followings()
+    {
+        return $this->belongsToMany(User::Class, 'followers', 'follower_id', 'user_id');
+    }
+
+    /**
+     * @param array $user_ids
+     */
+    public function follow($user_ids)
+    {
+        if (! is_array($user_ids)) {
+            $user_ids = compact('user_ids');
+        }
+        $this->followings()->sync($user_ids, false);
+    }
+
+    /**
+     * @param array $user_ids
+     */
+    public function unfollow($user_ids)
+    {
+        if (! is_array($user_ids)) {
+            $user_ids = compact('user_ids');
+        }
+        $this->followings()->detach($user_ids);
+    }
+
+    /**
+     * @param integer $user_id
+     *
+     * @return mixed
+     */
+    public function isFollowing($user_id)
+    {
+        return $this->followings->contains($user_id);
     }
 }
